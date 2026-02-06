@@ -4,7 +4,7 @@
 
 This repository originated as an attempt to design an **AI artist-agent**, **L3opold**, able to produce constrained prose from a deliberately defined corpus: rules, lexicon, style grammar, and versioned “laws.” The intention was to treat language generation as a **constraint engine** rather than a free-form chatbot.
 
-![Vertex MVP run proof](assets/screenshots/Studio_log_bloc.png)
+![Vertex MVP run proof](../assets/screenshots/Studio_log_bloc.png)
 *Figure — Vertex AI text generation grounded on a small curated corpus (pre-RAG, no vector index yet), aligned with persona constraints.*
 
 What surprised me here is the *sharpness* of the language: it feels *chiseled* by constraints rather than “averaged” by a generic chatbot.  
