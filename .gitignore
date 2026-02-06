@@ -1,0 +1,10 @@
+# --- Local environment ---
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+.DS_Store
+
+# --- Private notes (not published) ---
+notes/
