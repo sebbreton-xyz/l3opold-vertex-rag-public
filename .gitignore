@@ -10,5 +10,7 @@ __pycache__/
 notes/
 
 # --- Private / local-only docs ---
-docs/01_setup_vertex.md
-docs/02_corpus_rules.md
+
+# --- Local-only docs (not published) ---
+docs/11_setup_vertex.md
+docs/12_corpus_rules.md
