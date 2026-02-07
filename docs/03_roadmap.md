@@ -25,8 +25,8 @@
       Goal: build an English, sourceable, structured corpus ready for chunking (Open Access)
     </p>
     <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [ ] Find PMCIDs (E-utilities <code>esearch</code> on <code>pmc</code>) with an “adverse events / pharmacovigilance” query</li>
-      <li>- [ ] Download full-text JATS XML via OAI-PMH <code>GetRecord</code> (<code>metadataPrefix=pmc</code>, <code>set=pmc-open</code>)</li>
+      <li>- [x] Find PMCIDs (E-utilities <code>esearch</code> on <code>pmc</code>) with an “adverse events / pharmacovigilance” query</li>
+      <li>- [x] Download full-text JATS XML via OAI-PMH <code>GetRecord</code> (<code>metadataPrefix=pmc</code>, <code>set=pmc-open</code>)</li>
       <li>- [ ] Normalize & store: <code>data/raw/pmc_xml/PMCID.xml</code></li>
       <li>- [ ] Metadata index: <code>data/meta/articles.jsonl</code> (pmcid, title, year, journal, license, url)</li>
       <li>- [ ] “English only” filter (lang if available + fallback heuristic)</li>
