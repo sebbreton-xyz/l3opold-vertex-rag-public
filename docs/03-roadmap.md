@@ -14,7 +14,7 @@
       <li>- [x] “current vs obsolete” trap + precedence demonstration</li>
       <li>- [x] Verifiable citations: <code>ALLOWED_SOURCES</code> (real file paths)</li>
       <li>- [x] Demo scripts: <code>demo_playbook_local</code> (+ optional GCS mode)</li>
-      <li>- [x] Architecture docs + diagrams (Step 1 + Step 2 target)</li>
+      <li>- [x] Architecture docs + diagrams (Step 1, Step 2 + Step 3 target)</li>
     </ul>
   </div>
 
