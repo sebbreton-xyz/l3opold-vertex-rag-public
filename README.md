@@ -143,7 +143,6 @@ This track focuses on **data preparation** and **traceability** before embedding
 
 ---
 
-````md
 ### Step 2 — Extract chunks (PMC OA XML → JSONL)
 ```bash
 python scripts/extract_chunks_from_oai.py
