@@ -26,9 +26,7 @@ These three diagrams summarize how my approach is evolving, from a minimal proto
 [Text output (studio log / post)]
 ```
 *(1) MVP — Grounded generation via GCS (no index, no retrieval)*
-<details>
-<summary><strong>Canon stocké sur GCS, lu à l’exécution et injecté dans le prompt (“prompt stuffing”) avant génération.</strong></summary>
-</details>
+**Note:** Canon stocké sur GCS, lu à l’exécution et injecté dans le prompt (“prompt stuffing”) avant génération.
 
 
 ### Figure 2 — Local toy prompt-engine (reproducible demo)
@@ -66,10 +64,7 @@ These three diagrams summarize how my approach is evolving, from a minimal proto
              +--> displays the JSON (indented)
 ```
 *(2) Demo — Local “toy corpus” prompt-engine (no index, no retrieval)*
-<details>
-<summary><strong>Corpus d’exemple local chargé et concaténé dans un prompt strict (règles/format/interdits) pour produire une sortie contrôlée.</strong></summary>
-</details>
-
+**Note:** Corpus d’exemple local chargé et concaténé dans un prompt strict (règles/format/interdits) pour produire une sortie contrôlée.
 
 ### Figure 3 — Target architecture (full RAG on Vertex) ###
 
@@ -98,7 +93,5 @@ These three diagrams summarize how my approach is evolving, from a minimal proto
 [Answer + citations/sources + traceability]
 ```
 *(3) Target — Full RAG pipeline on Vertex (chunking → embeddings → retrieval → citations)*
-<details>
-<summary><strong>Ingestion + index vectoriel + retrieval top-k, puis génération LLM avec sources/citations traçables.</strong></summary>
-</details>
+**Note:** Ingestion + index vectoriel + retrieval top-k, puis génération LLM avec sources/citations traçables.
 
