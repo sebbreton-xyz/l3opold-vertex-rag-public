@@ -8,16 +8,20 @@ help:
 	@echo "  make sample  N=10"
 
 # Example query (adjust as needed)
-TERM ?= "adverse drug reaction"[Title/Abstract] OR pharmacovigilance[Title/Abstract] OR "drug safety"[Title/Abstract]
+PMC_TERM ?= (("adverse drug reaction"[Title/Abstract] OR pharmacovigilance[Title/Abstract] OR "drug safety"[Title/Abstract]) AND pmc-open[sb])
+
+# Tunables
 RETMAX ?= 100
+OUT_DIR ?= data/raw/pmc_xml
 SLEEP ?= 8
 RETRY ?= 3
 BACKOFF ?= 20
+
 RUN_DATE ?= YYYY-MM-DD
 N ?= 10
 
 fetch:
-	python scripts/fetch_pmc_oai.py --term '$(TERM)' --retmax $(RETMAX) --sleep $(SLEEP) --retry $(RETRY) --backoff $(BACKOFF)
+	python scripts/fetch_pmc_oai.py --term '$(PMC_TERM)' --retmax $(RETMAX) --out-dir $(OUT_DIR) --sleep $(SLEEP) --retry $(RETRY) --backoff $(BACKOFF)
 
 chunks:
 	python scripts/extract_chunks_from_oai.py
