@@ -26,7 +26,7 @@ The real/private corpus is not included for confidentiality and IP reasons.
 Two complementary public tracks are provided:
 
 1) **Public toy corpus** (`corpus/sample/`) to reproduce the core governance behavior:
-- format + precedence + banned terms
+- applying constraints: format, precedence and banned terms
 - source-backed answers using **real file paths**
 - deterministic “current > obsolete” precedence in conflicts
 
