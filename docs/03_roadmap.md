@@ -9,12 +9,12 @@
       Status: completed (public repo ready) — domain-agnostic foundation
     </p>
     <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [✅] Public corpus <code>corpus/sample/</code> (governance + playbook)</li>
-      <li>- [✅] Strict rules: JSON schema, banned terms, fixed final line</li>
-      <li>- [✅] “current vs obsolete” trap + precedence demonstration</li>
-      <li>- [✅] Verifiable citations: <code>ALLOWED_SOURCES</code> (real file paths)</li>
-      <li>- [✅] Demo scripts: <code>demo_playbook_local</code> (+ optional GCS mode)</li>
-      <li>- [✅] Architecture docs + diagrams (Step 1, Step 2 + Step 3 target)</li>
+      <li>- [x] Public corpus <code>corpus/sample/</code> (governance + playbook)</li>
+      <li>- [x] Strict rules: JSON schema, banned terms, fixed final line</li>
+      <li>- [x] “current vs obsolete” trap + precedence demonstration</li>
+      <li>- [x] Verifiable citations: <code>ALLOWED_SOURCES</code> (real file paths)</li>
+      <li>- [x] Demo scripts: <code>demo_playbook_local</code> (+ optional GCS mode)</li>
+      <li>- [x] Architecture docs + diagrams (Step 1, Step 2 + Step 3 target)</li>
     </ul>
   </div>
 
@@ -25,9 +25,9 @@
       Goal: build an English, sourceable, structured corpus ready for chunking (Open Access)
     </p>
     <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [✅] Find PMCIDs (E-utilities <code>esearch</code> on <code>pmc</code>) with an “adverse events / pharmacovigilance” query</li>
-      <li>- [✅] Download full-text JATS XML via OAI-PMH <code>GetRecord</code> (<code>metadataPrefix=pmc</code>, <code>set=pmc-open</code>)</li>
-      <li>- [🟨] Normalize & store: <code>data/raw/pmc_xml/PMCID.xml</code></li>
+      <li>- [x] Find PMCIDs (E-utilities <code>esearch</code> on <code>pmc</code>) with an “adverse events / pharmacovigilance” query</li>
+      <li>- [x] Download full-text JATS XML via OAI-PMH <code>GetRecord</code> (<code>metadataPrefix=pmc</code>, <code>set=pmc-open</code>)</li>
+      <li>- [ ] Normalize & store: <code>data/raw/pmc_xml/PMCID.xml</code></li>
       <li>- [ ] Metadata index: <code>data/meta/articles.jsonl</code> (pmcid, title, year, journal, license, url)</li>
       <li>- [ ] “English only” filter (lang if available + fallback heuristic)</li>
     </ul>
@@ -40,12 +40,12 @@
       Goal: produce a local FAISS index + reproducible artifacts (Vertex embeddings optional for comparison)
     </p>
     <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [🟨] Section-based chunking strategy (Abstract/Methods/Results/Discussion) + max size per chunk</li>
+      <li>- [ ] Section-based chunking strategy (Abstract/Methods/Results/Discussion) + max size per chunk</li>
       <li>- [ ] Generate embeddings (default: open-source <code>sentence-transformers</code> in batch)</li>
       <li>- [ ] Optional: Vertex embeddings (benchmark / comparison)</li>
-      <li>- [🟨] Artifacts: <code>artifacts/chunks.jsonl</code>, <code>artifacts/embeddings.npy</code>, <code>artifacts/index.faiss</code></li>
-      <li>- [🟨] Idempotent script: <code>scripts/index_corpus.py</code> (rerunnable, stable)</li>
-      <li>- [🟨] Repro command: <code>make index</code> → artifacts</li>
+      <li>- [ ] Artifacts: <code>artifacts/chunks.jsonl</code>, <code>artifacts/embeddings.npy</code>, <code>artifacts/index.faiss</code></li>
+      <li>- [ ] Idempotent script: <code>scripts/index_corpus.py</code> (rerunnable, stable)</li>
+      <li>- [ ] Repro command: <code>make index</code> → artifacts</li>
     </ul>
   </div>
 
