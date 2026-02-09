@@ -10,9 +10,9 @@
 
 ---
 
-# ✅ Roadmap
+# Roadmap
 
-## Phase 1 — Public Demo (Grounding + Governance) ✅
+## Phase 1 — Public Demo (Grounding + Governance)
 
 Status: completed (public repo ready) — domain-agnostic foundation
 
@@ -25,7 +25,7 @@ Status: completed (public repo ready) — domain-agnostic foundation
 
 ---
 
-## Phase 2 — Medical Corpus (PMC OA via OAI-PMH) ✅ (core)
+## Phase 2 — Medical Corpus (PMC OA via OAI-PMH) (Core)
 
 Goal: build an English, sourceable, structured corpus ready for indexing (Open Access)
 
@@ -41,7 +41,7 @@ Goal: build an English, sourceable, structured corpus ready for indexing (Open A
 
 ---
 
-## Phase 3A — Vertex RAG Engine (Managed) ✅
+## Phase 3A — Vertex RAG Engine (Managed)
 
 Status: completed — corpus / import / retrieve+generate with audit artifacts
 
@@ -57,7 +57,7 @@ Status: completed — corpus / import / retrieve+generate with audit artifacts
 
 ---
 
-## Phase 3B — FAISS Indexing (Open-source) ⏳
+## Phase 3B — FAISS Indexing (Open-source)
 
 Goal: produce a local FAISS index / reproducible artifacts
 
@@ -71,7 +71,7 @@ Goal: produce a local FAISS index / reproducible artifacts
 
 ---
 
-## Phase 4 — Retrieval (Local pipeline) + Chunk-level Citations ⏳ (FAISS)
+## Phase 4 — Retrieval (Local pipeline) + Chunk-level Citations (FAISS)
 
 Goal: local retriever (FAISS) + precise chunk IDs (PMCID/section/chunk)
 
@@ -84,7 +84,7 @@ Goal: local retriever (FAISS) + precise chunk IDs (PMCID/section/chunk)
 
 ---
 
-## Phase 5 — FastAPI (Minimal Backend) ⏳
+## Phase 5 — FastAPI (Minimal Backend)
 
 Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
 
@@ -97,7 +97,7 @@ Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
 
 ---
 
-## Phase 6 — UI (Minimal Front) ⏳
+## Phase 6 — UI (Minimal Front)
 
 Goal: make the demo usable for non-devs
 
@@ -110,7 +110,7 @@ Goal: make the demo usable for non-devs
 
 ---
 
-## Phase 7 — Hardening (Production-minded) ⏳
+## Phase 7 — Hardening (Production-minded)
 
 Goal: show production instincts (without claiming HIPAA compliance here)
 
