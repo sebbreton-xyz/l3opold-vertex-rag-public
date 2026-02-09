@@ -1,13 +1,17 @@
 import datetime as dt
 import json
 import os
+import re
 import subprocess
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import vertexai
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from vertexai import rag
 from vertexai.generative_models import GenerativeModel, Tool
@@ -29,6 +33,21 @@ API_TOKEN = os.environ.get("API_TOKEN")  # optional: simple bearer auth
 
 TOP_K_MAX = int(os.environ.get("TOP_K_MAX", "10"))
 MAX_OUTPUT_TOKENS = int(os.environ.get("MAX_OUTPUT_TOKENS", "512"))
+
+# Runs base (absolute, stable)
+RUNS_BASE = Path(RUNS_DIR)
+if not RUNS_BASE.is_absolute():
+    RUNS_BASE = (Path.cwd() / RUNS_BASE).resolve()
+
+DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+RUN_ID_RE = re.compile(r"^[0-9a-f]{8,32}$")  # your ids are 12 hex, but allow a bit wider
+
+ARTIFACTS = {
+    "report": ("report.md", "text/markdown; charset=utf-8"),
+    "demo": ("vertex_rag_demo.json", "application/json"),
+    "grounding": ("vertex_rag_grounding.json", "application/json"),
+    "citations": ("vertex_rag_citations.json", "application/json"),
+}
 
 
 def _require_env():
@@ -81,6 +100,66 @@ def _dedup_by_uri(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 
+def _check_auth(authorization: Optional[str]):
+    """If API_TOKEN is set, require Authorization: Bearer <token>."""
+    if not API_TOKEN:
+        return
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing Bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    if token != API_TOKEN:
+        raise HTTPException(status_code=403, detail="Invalid token")
+
+
+def _validate_day(day: str) -> str:
+    if not DAY_RE.match(day):
+        raise HTTPException(status_code=400, detail="Invalid day format (expected YYYY-MM-DD)")
+    return day
+
+
+def _validate_run_id(run_id: str) -> str:
+    if not RUN_ID_RE.match(run_id):
+        raise HTTPException(status_code=400, detail="Invalid run_id")
+    return run_id
+
+
+def _run_dir_path(day: str, run_id: str) -> Path:
+    """Resolve run directory safely under RUNS_BASE/day/run_id."""
+    day = _validate_day(day)
+    run_id = _validate_run_id(run_id)
+
+    p = (RUNS_BASE / day / run_id).resolve()
+    if RUNS_BASE not in p.parents:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not p.exists() or not p.is_dir():
+        raise HTTPException(status_code=404, detail="Run not found")
+    return p
+
+
+def _artifact_path(day: str, run_id: str, kind: str) -> Path:
+    if kind not in ARTIFACTS:
+        raise HTTPException(status_code=404, detail="Unknown artifact kind")
+    run_dir = _run_dir_path(day, run_id)
+    filename, _mt = ARTIFACTS[kind]
+    p = (run_dir / filename).resolve()
+    if run_dir not in p.parents:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not p.exists() or not p.is_file():
+        raise HTTPException(status_code=404, detail=f"{filename} not found")
+    return p
+
+
+def _links(day: str, run_id: str) -> Dict[str, str]:
+    base = f"/runs/{day}/{run_id}"
+    return {
+        "run": base,
+        "report": f"{base}/report",
+        "demo": f"{base}/demo",
+        "grounding": f"{base}/grounding",
+        "citations": f"{base}/citations",
+    }
+
+
 # -----------------------------
 # API models
 # -----------------------------
@@ -103,9 +182,19 @@ class AskResponse(BaseModel):
     retrieved_docs: int
     latency_ms: int
     guardrails: Dict[str, Any]
+    links: Dict[str, str]
 
 
 app = FastAPI(title="L3opold Vertex RAG API", version="0.1.0")
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+@app.get("/")
+def root():
+    return FileResponse(str(STATIC_DIR / "index.html"))
 
 
 @app.on_event("startup")
@@ -119,16 +208,66 @@ def healthz():
     return {"ok": True, "project": PROJECT_ID, "location": LOCATION}
 
 
-def _check_auth(authorization: Optional[str]):
-    if not API_TOKEN:
-        return
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing Bearer token")
-    token = authorization.split(" ", 1)[1].strip()
-    if token != API_TOKEN:
-        raise HTTPException(status_code=403, detail="Invalid token")
+# -----------------------------
+# Runs browsing / artifact serving
+# -----------------------------
+@app.get("/runs/{day}")
+def list_runs(day: str, authorization: Optional[str] = Header(None)):
+    _check_auth(authorization)
+    day = _validate_day(day)
+    day_dir = (RUNS_BASE / day).resolve()
+    if RUNS_BASE not in day_dir.parents and day_dir != RUNS_BASE:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not day_dir.exists() or not day_dir.is_dir():
+        return {"day": day, "runs": [], "count": 0}
+
+    runs = []
+    for p in sorted(day_dir.iterdir()):
+        if p.is_dir() and RUN_ID_RE.match(p.name):
+            runs.append(p.name)
+
+    return {"day": day, "runs": runs, "count": len(runs)}
 
 
+@app.get("/runs/{day}/{run_id}")
+def get_run(day: str, run_id: str, authorization: Optional[str] = Header(None)):
+    _check_auth(authorization)
+    run_dir = _run_dir_path(day, run_id)
+
+    # Which artifacts exist?
+    present = {}
+    for kind, (fname, _mt) in ARTIFACTS.items():
+        present[kind] = (run_dir / fname).exists()
+
+    return {
+        "day": day,
+        "run_id": run_id,
+        "run_dir": str(Path(RUNS_DIR) / day / run_id),
+        "artifacts_present": present,
+        "links": _links(day, run_id),
+    }
+
+
+@app.get("/runs/{day}/{run_id}/{kind}")
+def get_artifact(
+    day: str,
+    run_id: str,
+    kind: str,
+    download: bool = Query(False, description="If true, force download"),
+    authorization: Optional[str] = Header(None),
+):
+    _check_auth(authorization)
+    p = _artifact_path(day, run_id, kind)
+    _fname, mt = ARTIFACTS[kind]
+    headers = {}
+    if download:
+        headers["Content-Disposition"] = f'attachment; filename="{p.name}"'
+    return FileResponse(str(p), media_type=mt, headers=headers)
+
+
+# -----------------------------
+# Main endpoint
+# -----------------------------
 @app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
     _check_auth(authorization)
@@ -139,15 +278,17 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
             status_code=400,
             detail="Missing corpus. Set env VERTEX_RAG_CORPUS or pass corpus in request.",
         )
-
     if req.top_k > TOP_K_MAX:
         raise HTTPException(status_code=400, detail=f"top_k too high (max {TOP_K_MAX}).")
 
     # Run dir for audit artifacts
     request_id = uuid.uuid4().hex[:12]
     day = dt.date.today().isoformat()
-    run_dir = os.path.join(RUNS_DIR, day, request_id)
-    os.makedirs(run_dir, exist_ok=True)
+    run_dir_fs = (RUNS_BASE / day / request_id)
+    run_dir_fs.mkdir(parents=True, exist_ok=True)
+
+    # For API response (keep relative path, nicer for humans)
+    run_dir = str(Path(RUNS_DIR) / day / request_id)
 
     # Metrics (latency + retrieval counts)
     t0 = time.perf_counter()
@@ -173,12 +314,16 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
         )
     )
 
-    model = GenerativeModel(
-        req.model,
-        tools=[rag_tool],
-        generation_config={"max_output_tokens": MAX_OUTPUT_TOKENS},
-    )
-    resp = model.generate_content(req.prompt)
+    try:
+        model = GenerativeModel(
+            req.model,
+            tools=[rag_tool],
+            generation_config={"max_output_tokens": MAX_OUTPUT_TOKENS},
+        )
+        resp = model.generate_content(req.prompt)
+    except Exception as e:
+        # return a clean JSON error instead of a raw 500
+        raise HTTPException(status_code=503, detail=f"Vertex call failed: {str(e)[:1800]}")
 
     # Grounding extraction
     sources: List[Dict[str, Any]] = []
@@ -220,11 +365,12 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
     retrieved_docs = len(sources)
     latency_ms = int((time.perf_counter() - t0) * 1000)
     guardrails = {"top_k_max": TOP_K_MAX, "max_output_tokens": MAX_OUTPUT_TOKENS}
+    links = _links(day, request_id)
 
     # Save artifacts (demo + grounding + report)
-    out_demo = os.path.join(run_dir, "vertex_rag_demo.json")
-    with open(out_demo, "w", encoding="utf-8") as f:
-        json.dump(
+    out_demo = run_dir_fs / "vertex_rag_demo.json"
+    out_demo.write_text(
+        json.dumps(
             {
                 "request_id": request_id,
                 "project": PROJECT_ID,
@@ -240,18 +386,22 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
                 "retrieved_chunks": retrieved_chunks,
                 "retrieved_docs": retrieved_docs,
                 "guardrails": guardrails,
+                "links": links,
             },
-            f,
             indent=2,
-        )
+        ),
+        encoding="utf-8",
+    )
 
-    out_grounding = os.path.join(run_dir, "vertex_rag_grounding.json")
-    with open(out_grounding, "w", encoding="utf-8") as f:
-        json.dump({"grounding_metadata": grounding_dict}, f, indent=2)
+    out_grounding = run_dir_fs / "vertex_rag_grounding.json"
+    out_grounding.write_text(
+        json.dumps({"grounding_metadata": grounding_dict}, indent=2),
+        encoding="utf-8",
+    )
 
     if req.save_report:
-        report = os.path.join(run_dir, "report.md")
-        with open(report, "w", encoding="utf-8") as f:
+        report = run_dir_fs / "report.md"
+        with report.open("w", encoding="utf-8") as f:
             f.write(f"# Vertex RAG API run — {dt.datetime.now().isoformat(timespec='seconds')}\n")
             f.write("## Context\n")
             f.write(f"- Project: `{PROJECT_ID}`\n")
@@ -264,6 +414,12 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
             f.write(f"- Latency: `{latency_ms}ms`\n")
             f.write(f"- Retrieved: `chunks={retrieved_chunks}`, `docs={retrieved_docs}`\n")
             f.write(f"- Guardrails: `top_k_max={TOP_K_MAX}`, `max_output_tokens={MAX_OUTPUT_TOKENS}`\n\n")
+
+            f.write("## Links\n")
+            f.write(f"- report: `{links['report']}`\n")
+            f.write(f"- demo: `{links['demo']}`\n")
+            f.write(f"- grounding: `{links['grounding']}`\n")
+            f.write(f"- citations: `{links['citations']}`\n\n")
 
             f.write("## Prompt\n```text\n" + req.prompt + "\n```\n\n")
             f.write("## Answer\n" + (resp.text or "") + "\n\n")
@@ -283,4 +439,5 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
         retrieved_docs=retrieved_docs,
         latency_ms=latency_ms,
         guardrails=guardrails,
+        links=links,
     )

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>L3opold — Vertex RAG UI</title>
+  <style>
+    :root {
+      --page-bg: #e9ebf0;
+      /* background global (page) */
+      --surface-bg: #f0eee9;
+      /* gris clair des éléments UI */
+    }
+
+    html,
+    body {
+      background: var(--page-bg);
+    }
+
+    button,
+    input,
+    textarea,
+    select,
+    pre,
+    code,
+    .surface,
+    .panel,
+    .card,
+    .box,
+    .answer,
+    .debug {
+      background: var(--surface-bg);
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 24px;
+      max-width: 980px;
+    }
+
+    textarea,
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+      box-sizing: border-box;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    button {
+      padding: 10px 14px;
+      cursor: pointer;
+      border: 1px solid rgba(0, 0, 0, 0.10);
+      border-radius: 10px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      background: var(--surface-bg);
+      /* important: ne pas écraser */
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      margin: 0;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .card {
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+      margin: 10px 0;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+
+    a.link {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>L3opold — Vertex RAG</h1>
+  <p class="muted">Ask → Answer + sources (with excerpts). Powered by your FastAPI /ask endpoint.</p>
+
+  <label><strong>Prompt</strong></label>
+  <textarea id="prompt"
+    rows="5">Define signal detection in pharmacovigilance, and give 3 concrete examples. Cite your sources.</textarea>
+
+  <div class="row" style="margin-top:12px;">
+    <div>
+      <label><strong>top_k</strong></label>
+      <input id="topk" type="number" min="1" max="10" value="8" />
+    </div>
+    <div>
+      <label><strong>distance_threshold</strong></label>
+      <input id="dist" type="number" step="0.1" min="0" max="2" value="0.6" />
+    </div>
+    <div>
+      <label><strong>model</strong></label>
+      <input id="model" type="text" value="gemini-2.0-flash-001" />
+    </div>
+  </div>
+
+  <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+    <button id="askBtn">Ask</button>
+    <span id="status" class="muted"></span>
+  </div>
+
+  <h2 style="margin-top:22px;">Answer</h2>
+  <pre id="answer">(no answer yet)</pre>
+
+  <h2 style="margin-top:22px;">Sources</h2>
+  <!-- IMPORTANT: div container (pas pre) -->
+  <div id="sources" class="muted">(no sources yet)</div>
+
+  <h2 style="margin-top:22px;">Debug</h2>
+  <pre id="debug">(no debug yet)</pre>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function escapeHtml(s) {
+      return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function clearEl(el) {
+      while (el.firstChild) el.removeChild(el.firstChild);
+    }
+
+    $("askBtn")?.addEventListener("click", async () => {
+      const statusEl = $("status");
+      const answerEl = $("answer");
+      const sourcesEl = $("sources");
+      const debugEl = $("debug");
+
+      if (!statusEl || !answerEl || !sourcesEl || !debugEl) return;
+
+      statusEl.textContent = "Calling /ask…";
+      answerEl.textContent = "(loading…)";
+      clearEl(sourcesEl);
+      sourcesEl.textContent = ""; // keep clean
+      debugEl.textContent = "(loading…)";
+
+      const prompt = ($("prompt")?.value || "").trim();
+      const topkRaw = ($("topk")?.value || "8").trim();
+      const distRaw = ($("dist")?.value || "0.6").trim();
+      const model = ($("model")?.value || "gemini-2.0-flash-001").trim();
+
+      if (!prompt) {
+        statusEl.textContent = "⚠️ Please enter a prompt.";
+        answerEl.textContent = "(no answer yet)";
+        sourcesEl.textContent = "(no sources yet)";
+        debugEl.textContent = "(no debug yet)";
+        return;
+      }
+
+      const payload = {
+        prompt,
+        top_k: Number.isFinite(parseInt(topkRaw, 10)) ? parseInt(topkRaw, 10) : 8,
+        distance_threshold: Number.isFinite(parseFloat(distRaw)) ? parseFloat(distRaw) : 0.6,
+        model,
+        save_report: true,
+      };
+
+      try {
+        const t0 = performance.now();
+
+        const res = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const txt = await res.text();
+        let data = null;
+        try { data = JSON.parse(txt); } catch { data = null; }
+
+        const latencyClientMs = Math.round(performance.now() - t0);
+
+        // Debug always shows something useful
+        if (data) {
+          debugEl.textContent = JSON.stringify(data, null, 2);
+        } else {
+          debugEl.textContent = `Non-JSON response (HTTP ${res.status})\n\n${txt.slice(0, 2000)}`;
+        }
+
+        if (!res.ok) {
+          statusEl.textContent = `⚠️ HTTP ${res.status}`;
+          answerEl.textContent = "(error)";
+          sourcesEl.textContent = "(no sources yet)";
+          return;
+        }
+
+        // Success path
+        answerEl.textContent = (data && data.answer) ? data.answer : "(empty)";
+
+        // Meta row
+        const meta = document.createElement("div");
+        meta.className = "meta-row muted";
+
+        const parts = [
+          `request_id: <span class="mono">${escapeHtml(data?.request_id ?? "")}</span>`,
+          `run_dir: <span class="mono">${escapeHtml(data?.run_dir ?? "")}</span>`,
+          `latency_ms: <span class="mono">${escapeHtml(String(data?.latency_ms ?? latencyClientMs))}</span>`,
+          `docs: <span class="mono">${escapeHtml(String(data?.retrieved_docs ?? ""))}</span>`,
+          `chunks: <span class="mono">${escapeHtml(String(data?.retrieved_chunks ?? ""))}</span>`,
+        ];
+
+        // Add report link if available (Option A)
+        const reportHref = data?.links?.report;
+        if (reportHref) {
+          parts.push(
+            `report: <a class="link mono" href="${escapeHtml(reportHref)}" target="_blank" rel="noopener">open</a>`
+          );
+        }
+
+        meta.innerHTML = parts.join(" · ");
+        sourcesEl.appendChild(meta);
+
+        const sources = Array.isArray(data?.sources) ? data.sources : [];
+        if (!sources.length) {
+          const p = document.createElement("div");
+          p.className = "muted";
+          p.textContent = "(no sources yet)";
+          sourcesEl.appendChild(p);
+        } else {
+          sources.forEach((s, i) => {
+            const div = document.createElement("div");
+            div.className = "card";
+            div.innerHTML = `
+              <div><strong>${i + 1}. ${escapeHtml(s.title || "source")}</strong></div>
+              <div class="muted mono">${escapeHtml(s.uri || "")}</div>
+              <pre class="mono">${escapeHtml(s.excerpt || "(no excerpt)")}</pre>
+            `;
+            sourcesEl.appendChild(div);
+          });
+        }
+
+        statusEl.textContent = "✅ OK";
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        statusEl.textContent = "❌ " + msg;
+        answerEl.textContent = "(error)";
+        sourcesEl.textContent = "(no sources yet)";
+        debugEl.textContent = msg;
+      }
+    });
+  </script>
+
+</body>
+
+</html>
