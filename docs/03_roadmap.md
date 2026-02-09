@@ -90,9 +90,9 @@ Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
 
 * [x] `POST /ask` endpoint 
 * [x] Useful params
-* [ ] Collection param
-* [ ] Load index on startup (warm) + controlled caching
-* [ ] Stable response schema
+* [x] Collection param
+* [x] Load index on startup (warm) + controlled caching
+* [x] Stable response schema
 * [x] Docs: `curl` examples + OpenAPI
 
 ---
@@ -101,12 +101,12 @@ Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
 
 Goal: make the demo usable for non-devs
 
-* [ ] Text input + “Ask” button
-* [ ] Clear rendering: answer + sources + tags (and sections)
+* [x] Text input + “Ask” button
+* [x] Clear rendering: answer + sources + tags (and sections)
 * [ ] Toggle: stuffing vs retrieval (comparison)
 * [ ] Presets: example questions (1 click)
-* [ ] Medical OA preset: “Summarize adverse events of drug X from retrieved sources.”
-* [ ] “Debug mode”: show raw JSON
+* [x] Medical OA preset: “Summarize adverse events of drug X from retrieved sources.”
+* [x] “Debug mode”: show raw JSON
 
 ---
 
