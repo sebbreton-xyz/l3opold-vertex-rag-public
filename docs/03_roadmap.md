@@ -1,116 +1,125 @@
-## 🗺️ Roadmap
+* **Phase 1** : Public Demo (Governance + Grounding) ✅
+* **Phase 2** : Medical Corpus (PMC OA acquisition + préparation) ✅
+* **Phase 3A** : Vertex RAG Engine (Managed) ✅
+* **Phase 3B** : FAISS Indexing (Open-source) ⏳
+* **Phase 4A** : Vertex Retrieval + Audit ✅
+* **Phase 4B** : FAISS Retrieval + chunk-level citations ⏳
+* **Phase 5** : FastAPI ⏳
+* **Phase 6** : UI ⏳
+* **Phase 7** : Hardening ⏳
 
-<div style="display: flex; flex-wrap: wrap; gap: 16px;">
+---
 
-<!-- Stade 1 -->
-  <div style="flex: 1; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
-    <h3 style="margin-top: 0;">Phase 1 — Public Demo (Grounding + Governance) ✅</h3>
-    <p style="margin: 6px 0 12px; color: #6b7280;">
-      Status: completed (public repo ready) — domain-agnostic foundation
-    </p>
-    <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [x] Public corpus <code>corpus/sample/</code> (governance + playbook)</li>
-      <li>- [x] Strict rules: JSON schema, banned terms, fixed final line</li>
-      <li>- [x] “current vs obsolete” trap + precedence demonstration</li>
-      <li>- [x] Verifiable citations: <code>ALLOWED_SOURCES</code> (real file paths)</li>
-      <li>- [x] Demo scripts: <code>demo_playbook_local</code> (+ optional GCS mode)</li>
-      <li>- [x] Architecture docs + diagrams (Step 1, Step 2 + Step 3 target)</li>
-    </ul>
-  </div>
+# ✅ Roadmap
 
-<!-- Stade 2 -->
-  <div style="flex: 1; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
-    <h3 style="margin-top: 0;">Phase 1.5 — Medical Corpus (PMC OA via OAI-PMH)</h3>
-    <p style="margin: 6px 0 12px; color: #6b7280;">
-      Goal: build an English, sourceable, structured corpus ready for chunking (Open Access)
-    </p>
-    <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [x] Find PMCIDs (E-utilities <code>esearch</code> on <code>pmc</code>) with an “adverse events / pharmacovigilance” query</li>
-      <li>- [x] Download full-text JATS XML via OAI-PMH <code>GetRecord</code> (<code>metadataPrefix=pmc</code>, <code>set=pmc-open</code>)</li>
-      <li>- [ ] Normalize & store: <code>data/raw/pmc_xml/PMCID.xml</code></li>
-      <li>- [ ] Metadata index: <code>data/meta/articles.jsonl</code> (pmcid, title, year, journal, license, url)</li>
-      <li>- [ ] “English only” filter (lang if available + fallback heuristic)</li>
-    </ul>
-  </div>
+## Phase 1 — Public Demo (Grounding + Governance) ✅
 
-<!-- Stade 3 -->
-  <div style="flex: 1; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
-    <h3 style="margin-top: 0;">Phase 2 — Indexing (Chunking + Embeddings) — Hybrid</h3>
-    <p style="margin: 6px 0 12px; color: #6b7280;">
-      Goal: produce a local FAISS index + reproducible artifacts (Vertex embeddings optional for comparison)
-    </p>
-    <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [ ] Section-based chunking strategy (Abstract/Methods/Results/Discussion) + max size per chunk</li>
-      <li>- [ ] Generate embeddings (default: open-source <code>sentence-transformers</code> in batch)</li>
-      <li>- [ ] Optional: Vertex embeddings (benchmark / comparison)</li>
-      <li>- [ ] Artifacts: <code>artifacts/chunks.jsonl</code>, <code>artifacts/embeddings.npy</code>, <code>artifacts/index.faiss</code></li>
-      <li>- [ ] Idempotent script: <code>scripts/index_corpus.py</code> (rerunnable, stable)</li>
-      <li>- [ ] Repro command: <code>make index</code> → artifacts</li>
-    </ul>
-  </div>
+Status: completed (public repo ready) — domain-agnostic foundation
 
-<!-- Stade 4 -->
-  <div style="flex: 1; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
-    <h3 style="margin-top: 0;">Phase 3 — Retrieval (Top-K) + Chunk-level Citations</h3>
-    <p style="margin: 6px 0 12px; color: #6b7280;">
-      Goal: prove the “with/without retrieval” difference and cite precisely (PMCID/section/chunk)
-    </p>
-    <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [ ] <code>rag/retriever.py</code> switch: <code>retriever=faiss</code> (default) / <code>retriever=vertex_vector_search</code> (later)</li>
-      <li>- [ ] Pipeline: embed question → top-k chunks → compact prompt (governance + chunks)</li>
-      <li>- [ ] JSON output unchanged: <code>sources</code> = chunk ids + pmcid + section (+ offsets if available)</li>
-      <li>- [ ] Comparison remains: <code>MODE=stuffing</code> vs <code>MODE=retrieval</code></li>
-      <li>- [ ] Strong “medical OA” demo: retrieval cites Methods/Results (fewer hallucinations)</li>
-      <li>- [ ] Save outputs in <code>examples/</code> (proof artifacts)</li>
-    </ul>
-  </div>
+* [x] Public corpus
+* [x] Strict rules: JSON schema, banned terms, fixed final line
+* [x] “current vs obsolete” trap + precedence demonstration
+* [x] Verifiable citations: `ALLOWED_SOURCES` (real file paths)
+* [x] Demo scripts
+* [x] Architecture docs + diagrams
 
-<!-- Stade 5 -->
-  <div style="flex: 1; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
-    <h3 style="margin-top: 0;">Phase 4 — FastAPI (Minimal Backend)</h3>
-    <p style="margin: 6px 0 12px; color: #6b7280;">
-      Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
-    </p>
-    <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [ ] <code>POST /ask</code> endpoint (question, mode, top_k)</li>
-      <li>- [ ] Useful params: <code>filters</code> (year_from, journal, study_type if extracted)</li>
-      <li>- [ ] Collection param: <code>collection=pmc_adverse_events_v1</code></li>
-      <li>- [ ] Load index on startup (warm) + controlled caching</li>
-      <li>- [ ] Stable response schema: <code>answer</code>, <code>sources</code>, <code>tags</code>, <code>final_line</code></li>
-      <li>- [ ] Docs: <code>curl</code> examples + OpenAPI</li>
-    </ul>
-  </div>
+---
 
-<!-- Stade 6 -->
-  <div style="flex: 1; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
-    <h3 style="margin-top: 0;">Phase 5 — Zen UI (Minimal Front)</h3>
-    <p style="margin: 6px 0 12px; color: #6b7280;">
-      Goal: make the demo usable for non-devs (question → answer + sources)
-    </p>
-    <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [ ] Text input + “Ask” button</li>
-      <li>- [ ] Clear rendering: answer + sources + tags (and sections)</li>
-      <li>- [ ] Toggle: stuffing vs retrieval (comparison)</li>
-      <li>- [ ] Presets: example questions (1 click)</li>
-      <li>- [ ] Medical OA preset: “Summarize adverse events of drug X from retrieved sources.”</li>
-      <li>- [ ] “Debug mode”: show raw JSON (optional)</li>
-    </ul>
-  </div>
+## Phase 2 — Medical Corpus (PMC OA via OAI-PMH) ✅ (core)
 
-<!-- Stade 7 -->
-  <div style="flex: 1; min-width: 280px; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
-    <h3 style="margin-top: 0;">Phase 6 — Hardening (Production-minded, optional)</h3>
-    <p style="margin: 6px 0 12px; color: #6b7280;">
-      Goal: show production instincts (without claiming HIPAA compliance here)
-    </p>
-    <ul style="list-style: none; padding-left: 0; margin: 0;">
-      <li>- [ ] Minimal logging (no sensitive payloads) + request_id</li>
-      <li>- [ ] Budget guardrails (top_k, max_output_tokens, caching) + alerts/quotas</li>
-      <li>- [ ] API auth + rate limiting</li>
-      <li>- [ ] Observability (structured logs, metrics, traces)</li>
-      <li>- [ ] Secret management (Secret Manager) + least-privilege IAM</li>
-      <li>- [ ] Clear note: Open Access corpus, no PHI (patient data)</li>
-    </ul>
-  </div>
+Goal: build an English, sourceable, structured corpus ready for indexing (Open Access)
 
-</div>
+* [x] Find PMCIDs with an “adverse events / pharmacovigilance” query
+* [x] Download full-text JATS XML via OAI-PMH
+* [x] Chunk extraction + sanity checks
+* [x] Pre-embeddings QC (integrity + sampling) → run logs
+* [x] Export docs for Vertex RAG Engine
+* [x] Upload to GCS (EW4)
+* [ ] Normalize & store
+* [ ] Metadata index
+* [ ] “English only” filter 
+
+---
+
+## Phase 3A — Vertex RAG Engine (Managed) ✅
+
+Status: completed — corpus / import / retrieve+generate with audit artifacts
+
+* [x] Region aligned with bucket
+* [x] Create RAG corpus on Vertex
+* [x] Import docs from GCS prefix 
+* [x] Config captured
+* [x] Script: `vertex_rag_create_import.py` (writes run artifacts)
+* [x] Run artifacts: `vertex_rag_corpus.txt` + `vertex_rag_import_meta.json`
+* [x] Script: `vertex_rag_ask.py` (retrieve+generate)
+* [x] Prints answer + sources (URIs) + excerpts
+* [x] Saves JSON audit artifacts
+
+---
+
+## Phase 3B — FAISS Indexing (Open-source) ⏳
+
+Goal: produce a local FAISS index / reproducible artifacts
+
+* [x] Artifact already available: `artifacts/chunks.jsonl` (4,417 chunks)
+* [ ] Section-based chunking strategy (Abstract/Methods/Results/Discussion) + max size per chunk
+* [ ] Generate embeddings
+* [ ] Vertex embeddings (benchmark / comparison)
+* [ ] Artifacts: `artifacts/embeddings.npy`, `artifacts/index.faiss`
+* [ ] Idempotent script: `scripts/index_corpus.py` (rerunnable, stable)
+* [ ] Repro command: `make index` → artifacts
+
+---
+
+## Phase 4 — Retrieval (Local pipeline) + Chunk-level Citations ⏳ (FAISS)
+
+Goal: local retriever (FAISS) + precise chunk IDs (PMCID/section/chunk)
+
+* [ ] `rag/retriever.py` switch: `retriever=faiss` (default) / `retriever=vertex_vector_search`
+* [ ] Pipeline: embed question → top-k chunks → compact prompt (governance + chunks)
+* [ ] JSON output unchanged: `sources` = chunk ids + pmcid + section (+ offsets if available)
+* [ ] Comparison remains: `MODE=stuffing` vs `MODE=retrieval`
+* [ ] Strong “medical OA” demo: retrieval cites Methods/Results (fewer hallucinations)
+* [ ] Save outputs
+
+---
+
+## Phase 5 — FastAPI (Minimal Backend) ⏳
+
+Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
+
+* [ ] `POST /ask` endpoint 
+* [ ] Useful params
+* [ ] Collection param
+* [ ] Load index on startup (warm) + controlled caching
+* [ ] Stable response schema
+* [ ] Docs: `curl` examples + OpenAPI
+
+---
+
+## Phase 6 — UI (Minimal Front) ⏳
+
+Goal: make the demo usable for non-devs
+
+* [ ] Text input + “Ask” button
+* [ ] Clear rendering: answer + sources + tags (and sections)
+* [ ] Toggle: stuffing vs retrieval (comparison)
+* [ ] Presets: example questions (1 click)
+* [ ] Medical OA preset: “Summarize adverse events of drug X from retrieved sources.”
+* [ ] “Debug mode”: show raw JSON
+
+---
+
+## Phase 7 — Hardening (Production-minded) ⏳
+
+Goal: show production instincts (without claiming HIPAA compliance here)
+
+* [ ] Minimal logging 
+* [ ] Budget guardrails
+* [ ] API auth + rate limiting
+* [ ] Observability 
+* [ ] Secret management + least-privilege IAM
+* [ ] Clear note: Open Access corpus, no PHI (patient data)
+
+---
+
