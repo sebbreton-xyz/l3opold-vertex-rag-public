@@ -4,7 +4,7 @@
 * **Phase 3B** : FAISS Indexing (Open-source) ⏳
 * **Phase 4A** : Vertex Retrieval + Audit ✅
 * **Phase 4B** : FAISS Retrieval + chunk-level citations ⏳
-* **Phase 5** : FastAPI ⏳
+* **Phase 5** : FastAPI ✅
 * **Phase 6** : UI ⏳
 * **Phase 7** : Hardening ⏳
 
