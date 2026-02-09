@@ -88,12 +88,12 @@ Goal: local retriever (FAISS) + precise chunk IDs (PMCID/section/chunk)
 
 Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
 
-* [ ] `POST /ask` endpoint 
-* [ ] Useful params
+* [x] `POST /ask` endpoint 
+* [x] Useful params
 * [ ] Collection param
 * [ ] Load index on startup (warm) + controlled caching
 * [ ] Stable response schema
-* [ ] Docs: `curl` examples + OpenAPI
+* [x] Docs: `curl` examples + OpenAPI
 
 ---
 
