@@ -24,3 +24,7 @@ docs/12_corpus_rules.md
 
 # Local run folders
 2026-02-07/
+
+# --- Local env shell files ---
+env.*.sh
+!env.*.example.sh
