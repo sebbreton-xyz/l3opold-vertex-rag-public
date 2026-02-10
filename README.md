@@ -136,10 +136,10 @@ This track focuses on **data preparation** and **traceability** before embedding
 * [x] Local-first grounding on a public toy corpus (`corpus/sample/`)
 * [x] Governance rules: strict output constraints + precedence + source-backed answers
 * [x] Medical track: chunk extraction + QC gates + run logging (pre-embeddings)
-* [ ] Chunking standardization (optional refinements: tables, section-aware thresholds)
+* [x] Chunking standardization (optional refinements: tables, section-aware thresholds)
 * [ ] **Embeddings + FAISS** (or managed vector store) + **top-k retrieval**
 * [ ] Lightweight evaluation harness (queries + expected sources)
-* [ ] Minimal API/UI wrapper (optional)
+* [x] Minimal API/UI wrapper
 
 ---
 
