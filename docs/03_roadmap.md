@@ -5,7 +5,7 @@
 * **Phase 4A** : Vertex Retrieval + Audit ✅
 * **Phase 4B** : FAISS Retrieval + chunk-level citations ⏳
 * **Phase 5** : FastAPI ✅
-* **Phase 6** : UI ⏳
+* **Phase 6** : UI ✅
 * **Phase 7** : Hardening ⏳
 
 ---
@@ -90,7 +90,7 @@ Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
 
 * [x] `POST /ask` endpoint 
 * [x] Useful params
-* [x] Collection param
+* [ ] Collection param
 * [x] Load index on startup (warm) + controlled caching
 * [x] Stable response schema
 * [x] Docs: `curl` examples + OpenAPI
@@ -102,11 +102,12 @@ Goal: expose the pipeline via API (ready to plug into a UI) + simple filters
 Goal: make the demo usable for non-devs
 
 * [x] Text input + “Ask” button
-* [x] Clear rendering: answer + sources + tags (and sections)
+* [x] Clear rendering: answer, sources, run meta
 * [ ] Toggle: stuffing vs retrieval (comparison)
 * [ ] Presets: example questions (1 click)
 * [x] Medical OA preset: “Summarize adverse events of drug X from retrieved sources.”
 * [x] “Debug mode”: show raw JSON
+* [x] Redaction: hide storage identifiers (no gs:// in UI)
 
 ---
 
