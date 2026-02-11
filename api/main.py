@@ -5,12 +5,13 @@ import re
 import subprocess
 import time
 import uuid
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import vertexai
 from fastapi import FastAPI, Header, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from vertexai import rag
@@ -23,36 +24,37 @@ except Exception:
 
 
 # -----------------------------
-# Config
+# Helpers (PMC + redaction)
 # -----------------------------
-PROJECT_ID = os.environ.get("PROJECT_ID")
-LOCATION = os.environ.get("LOCATION") or os.environ.get("REGION")
-DEFAULT_CORPUS = os.environ.get("VERTEX_RAG_CORPUS")  # set it in env (local)
-RUNS_DIR = os.environ.get("RUNS_DIR", "outputs/runs")
-API_TOKEN = os.environ.get("API_TOKEN")  # optional: simple bearer auth
-
-TOP_K_MAX = int(os.environ.get("TOP_K_MAX", "10"))
-MAX_OUTPUT_TOKENS = int(os.environ.get("MAX_OUTPUT_TOKENS", "512"))
-
-# Runs base (absolute, stable)
-RUNS_BASE = Path(RUNS_DIR)
-if not RUNS_BASE.is_absolute():
-    RUNS_BASE = (Path.cwd() / RUNS_BASE).resolve()
-
-DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-RUN_ID_RE = re.compile(r"^[0-9a-f]{8,32}$")  # your ids are 12 hex, but allow a bit wider
-
-ARTIFACTS = {
-    "report": ("report.md", "text/markdown; charset=utf-8"),
-    "demo": ("vertex_rag_demo.json", "application/json"),
-    "grounding": ("vertex_rag_grounding.json", "application/json"),
-    "citations": ("vertex_rag_citations.json", "application/json"),
-}
+_PMC_RE = re.compile(r"pmc[_-]?(\d+)", re.IGNORECASE)
 
 
-def _require_env():
-    if not PROJECT_ID or not LOCATION:
-        raise RuntimeError("PROJECT_ID and (LOCATION or REGION) must be set.")
+def _pmc_id_from_title_or_uri(
+    title: Optional[str], uri: Optional[str]
+) -> Optional[str]:
+    for s in (title, uri):
+        if not s:
+            continue
+        m = _PMC_RE.search(s)
+        if m:
+            return m.group(1)
+    return None
+
+
+def _pmc_url(pmc_digits: str) -> str:
+    return f"https://pmc.ncbi.nlm.nih.gov/articles/PMC{pmc_digits}/"
+
+
+def _dedup_by_key(items: List[Dict[str, Any]], key: str) -> List[Dict[str, Any]]:
+    seen = set()
+    out: List[Dict[str, Any]] = []
+    for it in items:
+        v = it.get(key)
+        if not v or v in seen:
+            continue
+        seen.add(v)
+        out.append(it)
+    return out
 
 
 def _pb_to_dict(obj: Any) -> Optional[Dict[str, Any]]:
@@ -74,6 +76,7 @@ def _pb_to_dict(obj: Any) -> Optional[Dict[str, Any]]:
 
 
 def _gsutil_head(uri: str, max_chars: int = 600) -> Optional[str]:
+    """Read first bytes of a gs:// object (used only to build an excerpt)."""
     try:
         p = subprocess.run(
             ["gsutil", "cat", uri],
@@ -88,19 +91,55 @@ def _gsutil_head(uri: str, max_chars: int = 600) -> Optional[str]:
         return None
 
 
-def _dedup_by_uri(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    seen = set()
-    out: List[Dict[str, Any]] = []
-    for it in items:
-        u = it.get("uri")
-        if not u or u in seen:
-            continue
-        seen.add(u)
-        out.append(it)
-    return out
+# -----------------------------
+# Config
+# -----------------------------
+PUBLIC_MODE = os.environ.get("PUBLIC_MODE", "0") == "1"
+# Default: redact gs:// in API responses (good for public repos)
+REDACT_GCS_URIS = os.environ.get("REDACT_GCS_URIS", "1") == "1"
+
+PROJECT_ID = os.environ.get("PROJECT_ID")
+LOCATION = os.environ.get("LOCATION") or os.environ.get("REGION")
+DEFAULT_CORPUS = os.environ.get("VERTEX_RAG_CORPUS")
+RUNS_DIR = os.environ.get("RUNS_DIR", "outputs/runs")
+API_TOKEN = os.environ.get("API_TOKEN")  # optional bearer auth
+
+TOP_K_MAX = int(os.environ.get("TOP_K_MAX", "10"))
+MAX_OUTPUT_TOKENS = int(os.environ.get("MAX_OUTPUT_TOKENS", "512"))
+
+# Runs base (absolute, stable)
+RUNS_BASE = Path(RUNS_DIR)
+if not RUNS_BASE.is_absolute():
+    RUNS_BASE = (Path.cwd() / RUNS_BASE).resolve()
+
+DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+RUN_ID_RE = re.compile(r"^[0-9a-f]{8,32}$")  # your ids are 12 hex; allow wider
+
+ARTIFACTS = {
+    "report": ("report.md", "text/markdown; charset=utf-8"),
+    "demo": ("vertex_rag_demo.json", "application/json"),
+    "grounding": ("vertex_rag_grounding.json", "application/json"),
+    "citations": ("vertex_rag_citations.json", "application/json"),
+}
 
 
-def _check_auth(authorization: Optional[str]):
+def _require_env() -> None:
+    if not PROJECT_ID or not LOCATION:
+        raise RuntimeError("PROJECT_ID and (LOCATION or REGION) must be set.")
+
+    # IMPORTANT:
+    # - Rédaction (REDACT_GCS_URIS / PUBLIC_MODE) = content
+    # - API_TOKEN = access control
+    # We don’t force the token just to hide URIs
+    if PUBLIC_MODE and not API_TOKEN:
+        print(
+            "WARNING: PUBLIC_MODE=1 but API_TOKEN is not set. "
+            "This is OK for local use, but if you deploy publicly, set API_TOKEN to protect /ask and /runs.",
+            file=sys.stderr,
+        )
+
+
+def _check_auth(authorization: Optional[str]) -> None:
     """If API_TOKEN is set, require Authorization: Bearer <token>."""
     if not API_TOKEN:
         return
@@ -113,7 +152,9 @@ def _check_auth(authorization: Optional[str]):
 
 def _validate_day(day: str) -> str:
     if not DAY_RE.match(day):
-        raise HTTPException(status_code=400, detail="Invalid day format (expected YYYY-MM-DD)")
+        raise HTTPException(
+            status_code=400, detail="Invalid day format (expected YYYY-MM-DD)"
+        )
     return day
 
 
@@ -168,7 +209,10 @@ class AskRequest(BaseModel):
     top_k: int = Field(8, ge=1)
     distance_threshold: Optional[float] = Field(0.6, ge=0.0, le=2.0)
     model: str = Field("gemini-2.0-flash-001")
-    corpus: Optional[str] = Field(None, description="Vertex ragCorpora full name. Defaults to env VERTEX_RAG_CORPUS.")
+    corpus: Optional[str] = Field(
+        None,
+        description="Vertex ragCorpora full name. Defaults to env VERTEX_RAG_CORPUS.",
+    )
     save_report: bool = Field(True, description="Write report.md in run dir")
     excerpts: int = Field(280, ge=60, le=2000)
 
@@ -185,6 +229,9 @@ class AskResponse(BaseModel):
     links: Dict[str, str]
 
 
+# -----------------------------
+# App + static UI
+# -----------------------------
 app = FastAPI(title="L3opold Vertex RAG API", version="0.1.0")
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -192,13 +239,20 @@ STATIC_DIR = BASE_DIR / "static"
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+
 @app.get("/")
-def root():
+def root() -> FileResponse:
     return FileResponse(str(STATIC_DIR / "index.html"))
 
 
+@app.head("/")
+def root_head():
+    # Helps `curl -I /` avoid a 405 in some setups
+    return {}
+
+
 @app.on_event("startup")
-def _startup():
+def _startup() -> None:
     _require_env()
     vertexai.init(project=PROJECT_ID, location=LOCATION)
 
@@ -214,14 +268,17 @@ def healthz():
 @app.get("/runs/{day}")
 def list_runs(day: str, authorization: Optional[str] = Header(None)):
     _check_auth(authorization)
+
     day = _validate_day(day)
     day_dir = (RUNS_BASE / day).resolve()
-    if RUNS_BASE not in day_dir.parents and day_dir != RUNS_BASE:
+
+    if RUNS_BASE not in day_dir.parents:
         raise HTTPException(status_code=400, detail="Invalid path")
+
     if not day_dir.exists() or not day_dir.is_dir():
         return {"day": day, "runs": [], "count": 0}
 
-    runs = []
+    runs: List[str] = []
     for p in sorted(day_dir.iterdir()):
         if p.is_dir() and RUN_ID_RE.match(p.name):
             runs.append(p.name)
@@ -234,7 +291,6 @@ def get_run(day: str, run_id: str, authorization: Optional[str] = Header(None)):
     _check_auth(authorization)
     run_dir = _run_dir_path(day, run_id)
 
-    # Which artifacts exist?
     present = {}
     for kind, (fname, _mt) in ARTIFACTS.items():
         present[kind] = (run_dir / fname).exists()
@@ -259,9 +315,11 @@ def get_artifact(
     _check_auth(authorization)
     p = _artifact_path(day, run_id, kind)
     _fname, mt = ARTIFACTS[kind]
-    headers = {}
+
+    headers: Dict[str, str] = {}
     if download:
         headers["Content-Disposition"] = f'attachment; filename="{p.name}"'
+
     return FileResponse(str(p), media_type=mt, headers=headers)
 
 
@@ -279,15 +337,17 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
             detail="Missing corpus. Set env VERTEX_RAG_CORPUS or pass corpus in request.",
         )
     if req.top_k > TOP_K_MAX:
-        raise HTTPException(status_code=400, detail=f"top_k too high (max {TOP_K_MAX}).")
+        raise HTTPException(
+            status_code=400, detail=f"top_k too high (max {TOP_K_MAX})."
+        )
 
     # Run dir for audit artifacts
     request_id = uuid.uuid4().hex[:12]
     day = dt.date.today().isoformat()
-    run_dir_fs = (RUNS_BASE / day / request_id)
+    run_dir_fs = RUNS_BASE / day / request_id
     run_dir_fs.mkdir(parents=True, exist_ok=True)
 
-    # For API response (keep relative path, nicer for humans)
+    # For API response (relative, nicer)
     run_dir = str(Path(RUNS_DIR) / day / request_id)
 
     # Metrics (latency + retrieval counts)
@@ -298,7 +358,9 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
     retrieval_filter = None
     if req.distance_threshold is not None:
         try:
-            retrieval_filter = rag.Filter(vector_distance_threshold=req.distance_threshold)
+            retrieval_filter = rag.Filter(
+                vector_distance_threshold=req.distance_threshold
+            )
         except Exception:
             retrieval_filter = None
 
@@ -322,8 +384,9 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
         )
         resp = model.generate_content(req.prompt)
     except Exception as e:
-        # return a clean JSON error instead of a raw 500
-        raise HTTPException(status_code=503, detail=f"Vertex call failed: {str(e)[:1800]}")
+        raise HTTPException(
+            status_code=503, detail=f"Vertex call failed: {str(e)[:1800]}"
+        )
 
     # Grounding extraction
     sources: List[Dict[str, Any]] = []
@@ -345,22 +408,42 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
             snippet = getattr(rc, "text", None) if rc else None
             if snippet:
                 snippet = snippet.strip()
+
+            # If rc.text isn't present, fetch small excerpt from GCS (still does NOT expose gs:// in response)
             if (not snippet) and uri:
                 snippet = _gsutil_head(uri, max_chars=max(800, req.excerpts * 2))
 
-            if uri:
-                sources.append(
-                    {
-                        "uri": uri,
-                        "title": title,
-                        "excerpt": (snippet[: req.excerpts] + "…") if snippet and len(snippet) > req.excerpts else snippet,
-                    }
-                )
+            if not uri:
+                continue
+
+            pmc_digits = _pmc_id_from_title_or_uri(title, uri)
+            source_id = f"pmc_{pmc_digits}" if pmc_digits else (title or "source")
+
+            item: Dict[str, Any] = {
+                "id": source_id,
+                "title": title,
+                "excerpt": (
+                    (snippet[: req.excerpts] + "…")
+                    if snippet and len(snippet) > req.excerpts
+                    else snippet
+                ),
+            }
+
+            # Public PMC link (preferred)
+            if pmc_digits:
+                item["pmc_url"] = _pmc_url(pmc_digits)
+
+            # Raw gs:// only if explicitly allowed
+            if not (PUBLIC_MODE or REDACT_GCS_URIS):
+                item["uri"] = uri
+
+            sources.append(item)
+
     except Exception:
-        # keep API resilient: return answer even if grounding extraction fails
+        # Keep API resilient: return answer even if grounding extraction fails
         pass
 
-    sources = _dedup_by_uri(sources)
+        sources = _dedup_by_key(sources, "id")
 
     retrieved_docs = len(sources)
     latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -402,7 +485,9 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
     if req.save_report:
         report = run_dir_fs / "report.md"
         with report.open("w", encoding="utf-8") as f:
-            f.write(f"# Vertex RAG API run — {dt.datetime.now().isoformat(timespec='seconds')}\n")
+            f.write(
+                f"# Vertex RAG API run — {dt.datetime.now().isoformat(timespec='seconds')}\n"
+            )
             f.write("## Context\n")
             f.write(f"- Project: `{PROJECT_ID}`\n")
             f.write(f"- Location: `{LOCATION}`\n")
@@ -412,8 +497,12 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
             f.write(f"- Filter: `vector_distance_threshold={req.distance_threshold}`\n")
             f.write(f"- Request: `{request_id}`\n")
             f.write(f"- Latency: `{latency_ms}ms`\n")
-            f.write(f"- Retrieved: `chunks={retrieved_chunks}`, `docs={retrieved_docs}`\n")
-            f.write(f"- Guardrails: `top_k_max={TOP_K_MAX}`, `max_output_tokens={MAX_OUTPUT_TOKENS}`\n\n")
+            f.write(
+                f"- Retrieved: `chunks={retrieved_chunks}`, `docs={retrieved_docs}`\n"
+            )
+            f.write(
+                f"- Guardrails: `top_k_max={TOP_K_MAX}`, `max_output_tokens={MAX_OUTPUT_TOKENS}`\n\n"
+            )
 
             f.write("## Links\n")
             f.write(f"- report: `{links['report']}`\n")
@@ -423,12 +512,20 @@ def ask(req: AskRequest, authorization: Optional[str] = Header(None)):
 
             f.write("## Prompt\n```text\n" + req.prompt + "\n```\n\n")
             f.write("## Answer\n" + (resp.text or "") + "\n\n")
+
             f.write("## Sources (with excerpts)\n\n")
             for i, s in enumerate(sources, 1):
-                f.write(f"### {i}. {s.get('title') or 'source'}\n")
-                f.write(f"- URI: `{s['uri']}`\n\n")
+                f.write(f"### {i}. {s.get('title') or s.get('id') or 'source'}\n")
+                if s.get("pmc_url"):
+                    f.write(f"- PMC: `{s['pmc_url']}`\n")
+                if s.get("uri"):
+                    f.write(f"- URI: `{s['uri']}`\n")
+                if s.get("id"):
+                    f.write(f"- ID: `{s['id']}`\n")
+                f.write("\n")
+
                 ex = s.get("excerpt") or "(not available)"
-                f.write("> " + "\n> ".join(ex.splitlines()) + "\n\n")
+                f.write("> " + "\n> ".join(str(ex).splitlines()) + "\n\n")
 
     return AskResponse(
         request_id=request_id,

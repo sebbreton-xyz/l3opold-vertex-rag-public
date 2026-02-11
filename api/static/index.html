@@ -64,7 +64,6 @@
     pre {
       white-space: pre-wrap;
       background: var(--surface-bg);
-      /* important: ne pas écraser */
       padding: 12px;
       border-radius: 10px;
       border: 1px solid rgba(0, 0, 0, 0.08);
@@ -110,6 +109,25 @@
   <label><strong>Prompt</strong></label>
   <textarea id="prompt"
     rows="5">Define signal detection in pharmacovigilance, and give 3 concrete examples. Cite your sources.</textarea>
+
+  <div style="margin-top:12px;">
+    <label><strong>Access token (optional)</strong></label>
+    <input id="token" type="password" placeholder="Paste token here (only if /ask is protected)" autocomplete="off"
+      spellcheck="false" value="" />
+  </div>
+
+  <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+    <button id="clearTokenBtn" type="button">Clear token</button>
+    <span class="muted">Use only if the API requires it.</span>
+  </div>
+  <script>
+    document.getElementById("clearTokenBtn")?.addEventListener("click", () => {
+      const t = document.getElementById("token");
+      if (t) t.value = "";
+    });
+  </script>
+
+
 
   <div class="row" style="margin-top:12px;">
     <div>
@@ -168,7 +186,7 @@
       statusEl.textContent = "Calling /ask…";
       answerEl.textContent = "(loading…)";
       clearEl(sourcesEl);
-      sourcesEl.textContent = ""; // keep clean
+      sourcesEl.textContent = "";
       debugEl.textContent = "(loading…)";
 
       const prompt = ($("prompt")?.value || "").trim();
@@ -192,12 +210,16 @@
         save_report: true,
       };
 
+      const token = ($("token")?.value || "").trim();
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
+
       try {
         const t0 = performance.now();
 
         const res = await fetch("/ask", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload),
         });
 
@@ -236,7 +258,6 @@
           `chunks: <span class="mono">${escapeHtml(String(data?.retrieved_chunks ?? ""))}</span>`,
         ];
 
-        // Add report link if available (Option A)
         const reportHref = data?.links?.report;
         if (reportHref) {
           parts.push(
@@ -257,11 +278,36 @@
           sources.forEach((s, i) => {
             const div = document.createElement("div");
             div.className = "card";
-            div.innerHTML = `
-              <div><strong>${i + 1}. ${escapeHtml(s.title || "source")}</strong></div>
-              <div class="muted mono">${escapeHtml(s.uri || "")}</div>
-              <pre class="mono">${escapeHtml(s.excerpt || "(no excerpt)")}</pre>
-            `;
+
+            // Title
+            const t = document.createElement("div");
+            t.innerHTML = `<strong>${i + 1}. ${escapeHtml(s.title || "source")}</strong>`;
+            div.appendChild(t);
+
+            // Reference line: prefer pmc_url (clickable), else id
+            const ref = document.createElement("div");
+            ref.className = "muted mono";
+
+            if (s.pmc_url) {
+              const a = document.createElement("a");
+              a.href = s.pmc_url;
+              a.target = "_blank";
+              a.rel = "noreferrer";
+              a.className = "link";
+              a.textContent = s.pmc_url;
+              ref.appendChild(a);
+            } else {
+              ref.textContent = s.id || "(source)";
+            }
+
+            div.appendChild(ref);
+
+            // Excerpt
+            const pre = document.createElement("pre");
+            pre.className = "mono";
+            pre.textContent = s.excerpt || "(no excerpt)";
+            div.appendChild(pre);
+
             sourcesEl.appendChild(div);
           });
         }
