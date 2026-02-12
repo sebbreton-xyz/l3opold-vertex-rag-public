@@ -108,6 +108,8 @@ Goal: make the demo usable for non-devs
 * [x] Medical OA preset: “Summarize adverse events of drug X from retrieved sources.”
 * [x] “Debug mode”: show raw JSON
 * [x] Redaction: hide storage identifiers (no gs:// in UI)
+* [ ] Deploy FastAPI + static UI to Cloud Run
+* [ ] Enable API_TOKEN only on Cloud Run
 
 ---
 

@@ -103,7 +103,16 @@
 </head>
 
 <body>
-  <h1>L3opold — Vertex RAG</h1>
+  <div class="topbar">
+    <h1 style="margin:0;">L3opold — Vertex RAG</h1>
+    <div class="toplinks muted">
+      <a class="link" href="/docs" target="_blank" rel="noopener noreferrer">API Docs</a>
+      <span>·</span>
+      <a class="link" href="/openapi.json" target="_blank" rel="noopener noreferrer">OpenAPI</a>
+      <span>·</span>
+      <a class="link" href="/healthz" target="_blank" rel="noopener noreferrer">Health</a>
+    </div>
+  </div>
   <p class="muted">Ask → Answer + sources (with excerpts). Powered by your FastAPI /ask endpoint.</p>
 
   <label><strong>Prompt</strong></label>
@@ -210,7 +219,7 @@
         save_report: true,
       };
 
-      const token = ($("token")?.value || "").trim();
+      const token = ($("token")?.value || "").replace(/\s+/g, ""); // remove invisible line spaces/returns
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = "Bearer " + token;
 
