@@ -1,12 +1,22 @@
 # RAG Demo Kit (Vertex AI) — Public Sample Corpus
 
+> **« La mémoire n’est jamais une simple répétition, mais une refiguration. »**  
+> *Paul Ricœur —* *La Mémoire, l’Histoire, l’Oubli* *(2000)*
+
+> **A RAG is an utterance that only exists through its anchoring:**  
+> a documentary memory → a retrieval protocol → a way to cite.  
+> This chain is what gives it legitimacy.  
+> Anchoring is what ties the words back to their source.
+
+
 This repository is a public, sanitized demo kit designed to showcase the building blocks of a private RAG pipeline on **Google Cloud / Vertex AI**.
 
 It deliberately keeps the core engineering concerns visible:
-- **strict output constraints** (schema + banned terms + fixed final line)
-- **version precedence** (current vs obsolete, conflict resolution)
-- **source-backed answers** (verifiable file paths as citations)
-- **reproducibility** (clone + run)
+- **Traceability:** each run is recorded with its outputs and key metadata, making it easy to revisit and explain results later.
+- **Evidence-first answers:** the system answers from identifiable texts and can point back to its sources.
+- **Controlled retrieval:** we control how many passages are retrieved and how close they must be to the question.
+- **Safe-by-default / public mode:** anything that could expose sensitive information is redacted, and the system stays in a “safe” mode by default.
+- **Reproducibility:** someone else can rerun the project and obtain the same behavior, which makes validation and auditing easier.
 
 This repo also reflects the project’s evolution:
 - **L3opold (creative / poetry)** → early governance + “local-first” grounding
