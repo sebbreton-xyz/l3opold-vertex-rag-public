@@ -108,6 +108,14 @@ python3 -m scripts.demo_playbook_local
 
 This repo can reproduce a small Open Access biomedical corpus from PubMed Central using **NCBI E-utilities** (ID discovery) and **PMC OAI-PMH** (XML harvesting).
 
+## How it works
+
+[![Architecture overview](assets/L3opold_architecture.png)](assets/L3opold_architecture.png)
+
+- **Build (ingestion/indexing):** fetch PMC OA XML → chunk/QC → import/index
+- **Bridge:** `vertex_rag_corpus.txt` → `env.vertex.sh` → `VERTEX_RAG_CORPUS`
+- **Query-time:** embed question → retrieve (top_k + threshold) → answer + citations
+
 ### Step 1 — Fetch XML (OAI-PMH, `metadataPrefix=pmc`)
 
 ```bash
