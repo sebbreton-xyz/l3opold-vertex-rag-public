@@ -1,0 +1,71 @@
+.
+├── 2026-02-07
+│   └── qc_chunks.json
+├── api
+│   ├── static
+│   │   └── index.html
+│   └── main.py
+├── assets
+│   ├── screenshots
+│   │   └── Studio_log_bloc.png
+│   └── L3opold_architecture.png
+├── corpus
+│   └── sample
+│       ├── governance
+│       │   ├── banned.txt
+│       │   ├── facts_tags.md
+│       │   ├── identity_manifesto.md
+│       │   ├── output_format.md
+│       │   ├── rules_current.md
+│       │   └── rules_obsolete.md
+│       └── playbook
+│           ├── 00_executive_overview.md
+│           ├── 01_user_guide.md
+│           ├── 02_privacy_security_faq.md
+│           ├── 10_architecture_overview.md
+│           ├── 11_data_boundaries.md
+│           ├── 12_indexing_chunking.md
+│           ├── 13_retrieval_embeddings.md
+│           ├── 14_citations_audit.md
+│           ├── 15_logging_policy_current.md
+│           └── 90_logging_policy_obsolete.md
+├── docs
+│   ├── notes
+│   │   ├── backlog
+│   │   └── roadmap.md
+│   ├── runbook
+│   │   └── 2026-02-07_pre-embeddings-qc.md
+│   ├── runs
+│   │   ├── 2026-02-11
+│   │   │   ├── 13a2fe05fb0b.md
+│   │   │   ├── 900df0540c89.md
+│   │   │   └── c76e8f1923ba.md
+│   │   └── README.md
+│   ├── 00_project_context.md
+│   ├── 02_architecture.md
+│   ├── 03_roadmap.md
+│   ├── 04_lab-notebook.md
+│   ├── 11_setup_vertex.md
+│   ├── 12_corpus_rules.md
+│   └── repo_tree.txt
+├── scripts
+│   ├── demo_playbook_gcs.py
+│   ├── demo_playbook_local.py
+│   ├── extract_chunks_from_oai.py
+│   ├── fetch_pmc_oai.py
+│   ├── __init__.py
+│   ├── playbook_core.py
+│   ├── qc_chunks.py
+│   ├── sample_chunks.py
+│   ├── vertex_rag_ask.py
+│   └── vertex_rag_create_import.py
+├── env.faiss.example.sh
+├── env.faiss.sh
+├── env.vertex.example.sh
+├── env.vertex.sh
+├── .gitignore
+├── Makefile
+├── README.md
+└── requirements.txt
+
+16 directories, 53 files
