@@ -52,6 +52,9 @@ Production concerns (security hardening, deployment, observability, compliance) 
 
 ### Repository layout (tracked)
 
+See **[`docs/runs/`](docs/runs/)** for a small set of curated run reports (published samples).  
+Note: raw `outputs/` are not committed by default.
+
 - `scripts/` — runnable entrypoints
   - `demo_playbook_local.py` — local-first grounding demo on the toy corpus (governance + citations)
   - `demo_playbook_gcs.py` — same demo, designed for GCS/Vertex workflows
@@ -69,6 +72,9 @@ Production concerns (security hardening, deployment, observability, compliance) 
   - `00_project_context.md` — context and scope
   - `04-lab-notebook.md` — **lab notebook / journal de bord** (chronological index of runs)
   - `runbook/` — detailed run notes (validation checkpoints)
+  - `runs/` — **curated run reports** (publishable samples)
+
+  
 
 - `requirements.txt` — Python dependencies
 
