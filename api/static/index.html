@@ -10,7 +10,7 @@
       --page-bg: #e9ebf0;
       /* background global (page) */
       --surface-bg: #f0eee9;
-      /* gris clair des éléments UI */
+      /* light gray of the UI elements */
     }
 
     html,
@@ -35,9 +35,13 @@
 
     body {
       font-family: system-ui, sans-serif;
-      margin: 24px;
+      margin: 24px auto;
+      /* centered horizontally */
       max-width: 980px;
+      padding: 0 24px;
+      /* keeps air on small screens */
     }
+
 
     textarea,
     input {
@@ -48,11 +52,41 @@
       box-sizing: border-box;
     }
 
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      /* same distance as top_k / model */
+    }
+
+    /* Optional: a little air before each block */
+    .field+.field {
+      margin-top: 12px;
+    }
+
+
     .row {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 12px;
     }
+
+    .row>div {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .excerpt-block {
+      margin-top: 12px;
+    }
+
+    input[type="range"] {
+      accent-color: #444;
+      padding: 0;
+      /* Important: otherwise it inherits the input padding (10px) */
+    }
+
 
     button {
       padding: 10px 14px;
@@ -115,11 +149,13 @@
   </div>
   <p class="muted">Ask → Answer + sources (with excerpts). Powered by your FastAPI /ask endpoint.</p>
 
-  <label><strong>Prompt</strong></label>
-  <textarea id="prompt"
-    rows="5">Define signal detection in pharmacovigilance, and give 3 concrete examples. Cite your sources.</textarea>
+  <div class="field">
+    <label><strong>Prompt</strong></label>
+    <textarea id="prompt"
+      rows="5">Define signal detection in pharmacovigilance, and give 3 concrete examples. Cite your sources.</textarea>
+  </div>
 
-  <div style="margin-top:12px;">
+  <div class="field" style="margin-top:12px;">
     <label><strong>Access token (optional)</strong></label>
     <input id="token" type="password" placeholder="Paste token here (only if /ask is protected)" autocomplete="off"
       spellcheck="false" value="" />
@@ -152,6 +188,20 @@
       <input id="model" type="text" value="gemini-2.0-flash-001" />
     </div>
   </div>
+
+  <div class="excerpt-block">
+    <label><strong>excerpt length</strong> <span class="muted mono" id="excerptsVal">2000</span></label>
+    <input id="excerpts" type="range" min="60" max="2000" step="20" value="2000" />
+  </div>
+
+  <div style="margin-top:10px; display:flex; gap:12px; align-items:center;">
+    <label class="muted" style="display:flex; gap:8px; align-items:center; margin:0;">
+      <input id="saveReport" type="checkbox" checked />
+      save_report
+    </label>
+  </div>
+
+
 
   <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
     <button id="askBtn">Ask</button>
@@ -211,12 +261,21 @@
         return;
       }
 
+      const exRaw = ($("excerpts")?.value || "").trim();
+      let excerpts = parseInt(exRaw, 10);
+      if (!Number.isFinite(excerpts)) excerpts = 2000;
+      excerpts = Math.max(60, Math.min(2000, excerpts));
+
+      const saveReport = $("saveReport") ? !!$("saveReport").checked : true;
+
+
       const payload = {
         prompt,
         top_k: Number.isFinite(parseInt(topkRaw, 10)) ? parseInt(topkRaw, 10) : 8,
         distance_threshold: Number.isFinite(parseFloat(distRaw)) ? parseFloat(distRaw) : 0.6,
         model,
-        save_report: true,
+        excerpts,
+        save_report: saveReport,
       };
 
       const token = ($("token")?.value || "").replace(/\s+/g, ""); // remove invisible line spaces/returns
@@ -330,6 +389,17 @@
         debugEl.textContent = msg;
       }
     });
+
+    // Excerpts slider label
+    const exEl = document.getElementById("excerpts");
+    const exValEl = document.getElementById("excerptsVal");
+    if (exEl && exValEl) {
+      exValEl.textContent = exEl.value;
+      exEl.addEventListener("input", () => {
+        exValEl.textContent = exEl.value;
+      });
+    }
+
   </script>
 
 </body>
